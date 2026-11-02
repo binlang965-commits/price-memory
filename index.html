@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>价格记忆训练器</title>
+<meta name="theme-color" content="#080e1a" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="价格记忆" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<style>
+  :root{
+    --bg:#080e1a;
+    --bg2:#0c1424;
+    --card:#111c31;
+    --card2:#0e1729;
+    --line:#22314d;
+    --line2:#2c3e5f;
+    --text:#e9effb;
+    --muted:#8fa2c1;
+    --accent:#38bdf8;
+    --accent2:#22d3ee;
+    --green:#34d399;
+    --red:#f87171;
+    --amber:#fbbf24;
+    --purple:#a78bfa;
+    --shadow:0 18px 50px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1000px 500px at 15% -10%, rgba(56,189,248,.10), transparent 60%),
+      radial-gradient(800px 500px at 100% 0%, rgba(167,139,250,.08), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:980px;margin:0 auto;padding:22px 18px 60px}
+
+  /* ---------- 顶栏 ---------- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:13px;min-width:0}
+  .logo{
+    width:46px;height:46px;border-radius:14px;flex:none;
+    display:grid;place-items:center;font-size:23px;font-weight:800;color:#04101f;
+    background:linear-gradient(135deg,var(--accent2),var(--accent));
+    box-shadow:0 8px 24px rgba(34,211,238,.28);
+  }
+  .brand h1{font-size:19px;margin:0;letter-spacing:.3px}
+  .brand .sub{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+  .due-pill{
+    flex:none;cursor:pointer;user-select:none;
+    background:rgba(56,189,248,.10);border:1px solid rgba(56,189,248,.35);
+    color:var(--accent);padding:9px 15px;border-radius:999px;font-size:13px;
+    transition:.18s;white-space:nowrap;
+  }
+  .due-pill:hover{background:rgba(56,189,248,.18);transform:translateY(-1px)}
+  .due-pill b{font-size:17px;margin-left:3px}
+
+  /* ---------- 标签页 ---------- */
+  .tabs{display:flex;gap:6px;background:var(--card2);border:1px solid var(--line);padding:5px;border-radius:14px;margin-bottom:22px}
+  .tab{
+    flex:1;border:0;background:transparent;color:var(--muted);font-size:14.5px;
+    padding:10px 8px;border-radius:10px;cursor:pointer;font-family:inherit;transition:.16s;
+  }
+  .tab:hover{color:var(--text)}
+  .tab.active{background:var(--card);color:var(--text);box-shadow:0 2px 10px rgba(0,0,0,.25);font-weight:600}
+
+  /* ---------- 通用 ---------- */
+  .muted{color:var(--muted);font-size:13px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .row.center{justify-content:center}
+  .btn{
+    font-family:inherit;font-size:14px;cursor:pointer;
+    background:var(--card);color:var(--text);
+    border:1px solid var(--line2);border-radius:11px;padding:10px 16px;
+    transition:.16s;
+  }
+  .btn:hover{border-color:#3f5578;transform:translateY(-1px)}
+  .btn:active{transform:translateY(0)}
+  .btn.primary{background:linear-gradient(135deg,#0ea5e9,#22d3ee);border:0;color:#04101f;font-weight:700;box-shadow:0 8px 22px rgba(34,211,238,.22)}
+  .btn.primary:hover{filter:brightness(1.06)}
+  .btn.ghost{background:transparent;border-color:var(--line);color:var(--muted)}
+  .btn.danger{color:var(--red);border-color:rgba(248,113,113,.4)}
+  .btn.danger:hover{background:rgba(248,113,113,.1)}
+  .btn.green{background:rgba(52,211,153,.14);border-color:rgba(52,211,153,.45);color:var(--green)}
+  .btn.amber{background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4);color:var(--amber)}
+  .btn.red{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.4);color:var(--red)}
+  .btn.lg{padding:14px 26px;font-size:16px;border-radius:13px}
+  .btn.sm{padding:7px 12px;font-size:13px}
+  .input{
+    width:100%;font-family:inherit;font-size:14.5px;color:var(--text);
+    background:var(--card2);border:1px solid var(--line2);border-radius:10px;
+    padding:11px 13px;outline:none;transition:.16s;
+  }
+  .input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(56,189,248,.14)}
+  .input::placeholder{color:#5c6e8d}
+  .textarea{resize:vertical;line-height:1.6}
+
+  /* ---------- 首页 ---------- */
+  .hero{
+    display:grid;grid-template-columns:1.25fr .75fr;gap:18px;
+    background:linear-gradient(150deg,rgba(56,189,248,.10),rgba(167,139,250,.06) 60%,transparent);
+    border:1px solid var(--line2);border-radius:20px;padding:26px;margin-bottom:26px;
+    box-shadow:var(--shadow);
+  }
+  .eyebrow{margin:0 0 2px;font-size:13px;color:var(--accent);letter-spacing:.6px}
+  .big-num{font-size:64px;font-weight:800;line-height:1.05;letter-spacing:-2px;
+    background:linear-gradient(135deg,#e9effb,#7dd3fc);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{margin:6px 0 16px}
+  .hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:center}
+  .hero-stats>div{
+    background:rgba(8,14,26,.5);border:1px solid var(--line);border-radius:14px;
+    padding:14px 12px;text-align:center;
+  }
+  .hero-stats span{display:block;font-size:24px;font-weight:700}
+  .hero-stats small{color:var(--muted);font-size:12px}
+  .sec-title{font-size:15px;color:var(--muted);font-weight:600;margin:26px 0 12px;letter-spacing:.3px}
+  .mode-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+  .mode-card{
+    text-align:left;font-family:inherit;cursor:pointer;
+    background:var(--card);border:1px solid var(--line);border-radius:15px;
+    padding:17px 16px;transition:.16s;color:var(--text);
+  }
+  .mode-card:hover{border-color:rgba(56,189,248,.5);transform:translateY(-2px);background:#13223b}
+  .mode-card b{display:block;font-size:15px;margin-bottom:5px}
+  .mode-card span{font-size:12.5px;color:var(--muted);line-height:1.5}
+  .weak-list{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .weak-row{display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);font-size:14px}
+  .weak-row:last-child{border-bottom:0}
+
+  /* ---------- 练习 ---------- */
+  .practice-top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .mode-name{font-size:13.5px;color:var(--accent);font-weight:600}
+  .progress{margin-left:auto;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .timer{font-size:18px;font-weight:800;color:var(--amber);font-variant-numeric:tabular-nums;
+    background:rgba(251,191,36,.1);padding:4px 12px;border-radius:9px}
+  .q-card{
+    background:var(--card);border:1px solid var(--line2);border-radius:22px;
+    padding:38px 28px;min-height:340px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;box-shadow:var(--shadow);
+  }
+  .q-label{font-size:13px;color:var(--muted);margin-bottom:12px;letter-spacing:.4px}
+  .q-name{font-size:34px;font-weight:800;line-height:1.25;margin-bottom:10px;word-break:break-word}
+  .reveal-price{
+    font-size:52px;font-weight:800;color:var(--green);margin:14px 0 6px;
+    font-variant-numeric:tabular-nums;letter-spacing:-1px;
+  }
+  .reveal-price .unit{font-size:19px;color:var(--muted);font-weight:500;margin-left:6px;letter-spacing:0}
+  .self-rate{display:flex;gap:12px;margin-top:18px;flex-wrap:wrap;justify-content:center}
+  .options{display:grid;grid-template-columns:1fr 1fr;gap:11px;width:100%;max-width:560px;margin-top:20px}
+  .opt{
+    font-family:inherit;font-size:17px;font-weight:600;cursor:pointer;
+    background:var(--card2);color:var(--text);border:1.5px solid var(--line2);
+    border-radius:13px;padding:17px 12px;transition:.14s;
+  }
+  .opt:hover:not(:disabled){border-color:var(--accent);background:#13233c}
+  .opt.correct{background:rgba(52,211,153,.16);border-color:var(--green);color:var(--green)}
+  .opt.wrong{background:rgba(248,113,113,.14);border-color:var(--red);color:var(--red)}
+  .opt.dim{opacity:.42}
+  .opt:disabled{cursor:default}
+  .input-row{display:flex;align-items:center;gap:8px;margin-top:22px;width:100%;max-width:340px}
+  .yen{font-size:26px;color:var(--muted)}
+  .answer-input{
+    flex:1;font-family:inherit;font-size:26px;font-weight:700;text-align:center;
+    background:var(--card2);color:var(--text);border:1.5px solid var(--line2);
+    border-radius:13px;padding:14px;outline:none;transition:.16s;
+  }
+  .answer-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(56,189,248,.14)}
+  .feedback{font-size:19px;font-weight:700;margin:20px 0 4px;padding:13px 22px;border-radius:13px}
+  .feedback.ok{color:var(--green);background:rgba(52,211,153,.11);border:1px solid rgba(52,211,153,.35)}
+  .feedback.bad{color:var(--red);background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.35)}
+  .session-score{margin-top:16px;text-align:center;font-size:13.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+  /* ---------- 总结 ---------- */
+  .summary{text-align:center;padding:30px 10px}
+  .summary-icon{font-size:56px;margin-bottom:6px}
+  .summary h2{font-size:24px;margin:0 0 22px}
+  .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;max-width:560px;margin:0 auto 28px}
+  .summary-grid>div{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:16px 8px}
+  .summary-grid span{display:block;font-size:25px;font-weight:800}
+  .summary-grid small{color:var(--muted);font-size:12px}
+
+  /* ---------- 管理 ---------- */
+  .toolbar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px}
+  .toolbar .btn{font-size:13px;padding:9px 14px}
+  .search-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .search-row .input{max-width:340px}
+  .table-wrap{background:var(--card);border:1px solid var(--line);border-radius:15px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:13px 16px;border-bottom:1px solid var(--line);background:var(--card2)}
+  td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tr:last-child td{border-bottom:0}
+  .price-cell{font-weight:700;font-size:15px;white-space:nowrap}
+  .price-cell .sub{margin-left:2px}
+  .sub{font-size:12px;color:var(--muted);font-weight:400;margin-top:2px}
+  .bar{height:6px;background:var(--card2);border-radius:99px;overflow:hidden;width:90px;margin-bottom:5px}
+  .bar span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:99px}
+  .ops{white-space:nowrap;text-align:right}
+  .mini{font-family:inherit;font-size:12.5px;cursor:pointer;background:transparent;border:1px solid var(--line2);
+    color:var(--muted);border-radius:8px;padding:6px 10px;margin-left:6px;transition:.14s}
+  .mini:hover{color:var(--text);border-color:#3f5578}
+  .mini.danger:hover{color:var(--red);border-color:rgba(248,113,113,.5)}
+
+  /* ---------- 统计 ---------- */
+  .stat-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:26px}
+  .stat-card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:18px 16px}
+  .stat-card span{display:block;font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+  .stat-card small{color:var(--muted);font-size:12.5px}
+  .chart{display:flex;align-items:flex-end;gap:10px;height:180px;background:var(--card);border:1px solid var(--line);
+    border-radius:15px;padding:18px 18px 12px}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:7px}
+  .bar-track{width:100%;max-width:46px;height:100%;display:flex;align-items:flex-end;background:var(--card2);border-radius:9px;overflow:hidden}
+  .bar-fill{width:100%;background:linear-gradient(180deg,var(--accent),#0e7490);border-radius:9px;min-height:3px;transition:height .3s}
+  .bar-col span{font-size:12px;color:var(--text);font-variant-numeric:tabular-nums}
+  .bar-col small{font-size:11px;color:var(--muted)}
+
+  /* ---------- 空状态 ---------- */
+  .empty{text-align:center;padding:60px 20px;background:var(--card);border:1px dashed var(--line2);border-radius:20px}
+  .empty.small{padding:30px}
+  .empty-icon{font-size:50px;margin-bottom:10px}
+  .empty h2{font-size:20px;margin:0 0 8px}
+  .empty p{color:var(--muted);font-size:14px;margin:0 0 22px}
+  .empty .row{justify-content:center}
+
+  /* ---------- 弹窗 ---------- */
+  .modal-root{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:18px}
+  .modal-root[hidden]{display:none}
+  .modal-mask{position:absolute;inset:0;background:rgba(3,7,15,.72);backdrop-filter:blur(4px)}
+  .modal{
+    position:relative;width:100%;max-width:520px;max-height:90vh;overflow:auto;
+    background:var(--card);border:1px solid var(--line2);border-radius:20px;
+    box-shadow:0 30px 80px rgba(0,0,0,.6);
+  }
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}
+  .modal-head h2{font-size:17px;margin:0}
+  .icon-btn{background:transparent;border:0;color:var(--muted);font-size:17px;cursor:pointer;padding:4px 8px;border-radius:8px}
+  .icon-btn:hover{background:var(--card2);color:var(--text)}
+  .modal-body{padding:20px}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:16px 20px;border-top:1px solid var(--line)}
+  .form{display:flex;flex-direction:column;gap:14px}
+  .form label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+  .code{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;
+    line-height:1.7;overflow:auto;color:#b8c7e0;font-family:ui-monospace,Consolas,monospace}
+  .modal-body .textarea{margin-top:6px}
+  .modal-body .muted{margin:0 0 8px;line-height:1.6}
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:80;
+    background:#1b2b47;border:1px solid var(--line2);color:var(--text);
+    padding:12px 20px;border-radius:12px;font-size:14px;box-shadow:var(--shadow);
+    animation:toastIn .2s ease;
+  }
+  .toast[hidden]{display:none}
+  @keyframes toastIn{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+
+  @media (max-width:640px){
+    .app{padding:16px 13px 50px}
+    .hero{grid-template-columns:1fr;padding:20px}
+    .big-num{font-size:52px}
+    .q-name{font-size:27px}
+    .reveal-price{font-size:42px}
+    .options{grid-template-columns:1fr}
+    .summary-grid{grid-template-columns:1fr 1fr}
+    .brand h1{font-size:16.5px}
+    .brand .sub{display:none}
+    .due-pill{font-size:12px;padding:8px 12px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">¥</div>
+      <div>
+        <h1>价格记忆训练器</h1>
+        <p class="sub">间隔重复 · 错题强化 · 多种练习模式</p>
+      </div>
+    </div>
+    <div class="due-pill" onclick="App.start('due')" title="点击开始复习">
+      待复习 <b id="due-count">0</b>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-view="home" onclick="App.view('home')">首页</button>
+    <button class="tab" data-view="manage" onclick="App.view('manage')">产品管理</button>
+    <button class="tab" data-view="stats" onclick="App.view('stats')">统计</button>
+  </nav>
+
+  <main>
+    <section id="view-home" class="view"></section>
+    <section id="view-practice" class="view" hidden></section>
+    <section id="view-manage" class="view" hidden></section>
+    <section id="view-stats" class="view" hidden></section>
+  </main>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<div id="modal-root" class="modal-root" hidden>
+  <div class="modal-mask" onclick="App.closeModal()"></div>
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modal-title"></h2>
+      <button class="icon-btn" onclick="App.closeModal()">✕</button>
+    </div>
+    <div id="modal-body" class="modal-body"></div>
+    <div id="modal-actions" class="modal-actions"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ================= 常量与数据 ================= */
+  var KEY = 'price_trainer_v1';
+  var DAY = 86400000;
+  var INTERVALS = [0, 1, 2, 4, 7, 15, 30, 60]; // 天
+  var MODES = {
+    due:     { name:'智能复习',      desc:'按遗忘曲线安排，优先练快忘的' },
+    choice:  { name:'看产品选价格',  desc:'四选一，快速巩固' },
+    input:   { name:'手动输入价格',  desc:'凭记忆精确写出价格' },
+    reverse: { name:'看价格猜产品',  desc:'反向记忆，双向巩固' },
+    flash:   { name:'闪卡自评',      desc:'看产品想价格，自评记忆程度' },
+    weak:    { name:'错题强化',      desc:'只练之前答错或没掌握的' },
+    timed:   { name:'60 秒挑战',     desc:'限时快答，检验熟练度' }
+  };
+
+  // 内置产品清单（首次打开时自动载入）
+  var SEED_PRODUCTS = [
+    { name:'汤杯',         price:54 },
+    { name:'汤袋',         price:65 },
+    { name:'大桶',         price:49 },
+    { name:'小桶',         price:40 },
+    { name:'大袋',         price:60 },
+    { name:'小袋',         price:50 },
+    { name:'碗面',         price:48 },
+    { name:'汤五合一',     price:114 },
+    { name:'茄皇五合一',   price:96 },
+    { name:'五合一其他',   price:65 },
+    { name:'小茶',         price:33 },
+    { name:'小鲜',         price:37 },
+    { name:'小海之言',     price:46 },
+    { name:'一升海之言',   price:46 },
+    { name:'幻神柚见春拂', price:39 },
+    { name:'一升其他',     price:25 },
+    { name:'阿萨姆',       price:47 },
+    { name:'中鲜',         price:36 },
+    { name:'二升鲜',       price:45 },
+    { name:'一升阿萨姆',   price:54 }
+  ];
+
+  var D = loadData();
+  var S = { view:'home', session:null, filter:'', toastTimer:null };
+
+  /* ================= 工具 ================= */
+  function uid(){
+    return Math.random().toString(36).slice(2, 10);
+  }
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+  function shuffle(a){
+    for(var i=a.length-1;i>0;i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function todayStart(){
+    var d = new Date(); d.setHours(0,0,0,0); return d.getTime();
+  }
+  function fmtPrice(p){
+    return Number(p).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+  }
+  function parsePrice(v){
+    return Number(String(v).replace(/[¥￥,\s元]/g, ''));
+  }
+  function priceEqual(a, b){
+    return Math.abs(Number(a) - Number(b)) < 0.005;
+  }
+  function fmtDate(t){
+    var diff = Math.ceil((t - Date.now()) / DAY);
+    if(diff <= 0) return '现在';
+    if(diff === 1) return '明天';
+    if(diff === 2) return '后天';
+    var d = new Date(t);
+    return (d.getMonth()+1) + '月' + d.getDate() + '日';
+  }
+  function errRate(it){
+    return it.stat.attempts ? it.stat.wrong / it.stat.attempts : 0;
+  }
+
+  function loadData(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(!raw) return { items: [], log: [] };
+      var d = JSON.parse(raw);
+      if(!d || !Array.isArray(d.items)) return { items: [], log: [] };
+      var seen = {};
+      d.items = d.items.map(function(it){
+        var n = normalizeItem(it);
+        if(seen[n.id]) n.id = uid();
+        seen[n.id] = 1;
+        return n;
+      });
+      d.log = Array.isArray(d.log) ? d.log.slice(-800) : [];
+      return d;
+    }catch(e){
+      return { items: [], log: [] };
+    }
+  }
+
+  function normalizeItem(it){
+    it = it || {};
+    return {
+      id: (it.id && /^[a-z0-9]{6,16}$/.test(String(it.id))) ? String(it.id) : uid(),
+      name: String(it.name || '').trim(),
+      price: Number(it.price) || 0,
+      spec: String(it.spec || '').trim(),
+      category: String(it.category || '').trim(),
+      note: String(it.note || '').trim(),
+      srs: it.srs && typeof it.srs.level === 'number'
+        ? { level: Math.max(0, Math.min(INTERVALS.length-1, it.srs.level|0)), due: Number(it.srs.due) || 0 }
+        : { level: 0, due: 0 },
+      stat: it.stat
+        ? {
+            attempts: Number(it.stat.attempts) || 0,
+            correct: Number(it.stat.correct) || 0,
+            wrong: Number(it.stat.wrong) || 0,
+            last: Number(it.stat.last) || 0
+          }
+        : { attempts: 0, correct: 0, wrong: 0, last: 0 }
+    };
+  }
+
+  function save(){
+    try{
+      localStorage.setItem(KEY, JSON.stringify(D));
+    }catch(e){
+      toast('保存失败：浏览器存储空间不足或被禁用');
+    }
+  }
+
+  function ensureSeed(){
+    if(!SEED_PRODUCTS.length) return;
+    try{
+      if(localStorage.getItem(KEY + '_seeded')) return;
+
+      SEED_PRODUCTS.forEach(function(p){
+        var exist = null;
+        for(var i=0;i<D.items.length;i++){
+          if(D.items[i].name === p.name){ exist = D.items[i]; break; }
+        }
+        if(exist){
+          exist.price = p.price;
+        }else{
+          D.items.push(normalizeItem({ id: uid(), name: p.name, price: p.price }));
+        }
+      });
+
+      save();
+      localStorage.setItem(KEY + '_seeded', '1');
+    }catch(e){ /* 忽略隐私模式下的存储错误 */ }
+  }
+
+  function toast(msg){
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.hidden = false;
+    clearTimeout(S.toastTimer);
+    S.toastTimer = setTimeout(function(){ el.hidden = true; }, 2200);
+  }
+
+  /* ================= 间隔重复 ================= */
+  function schedule(item, quality){
+    // quality: 0 忘了 / 1 模糊 / 2 记得
+    var s = item.srs;
+    if(quality === 0){
+      s.level = Math.max(0, s.level - 2);
+      s.due = Date.now();
+    }else if(quality === 1){
+      s.due = Date.now() + 1 * DAY;
+    }else{
+      s.level = Math.min(INTERVALS.length - 1, s.level + 1);
+      s.due = Date.now() + INTERVALS[s.level] * DAY;
+    }
+  }
+
+  function applyResult(item, correct, quality){
+    item.stat.attempts++;
+    item.stat.last = Date.now();
+    if(correct) item.stat.correct++;
+    else if(quality !== 1) item.stat.wrong++;
+
+    if(quality !== 1){
+      D.log.push({ t: Date.now(), id: item.id, correct: !!correct });
+      if(D.log.length > 800) D.log = D.log.slice(-800);
+    }
+
+    var q = (quality === undefined || quality === null) ? (correct ? 2 : 0) : quality;
+    schedule(item, q);
+    save();
+  }
+
+  /* ================= 视图切换 ================= */
+  function showView(name){
+    var views = document.querySelectorAll('.view');
+    for(var i=0;i<views.length;i++){
+      views[i].hidden = (views[i].id !== 'view-' + name);
+    }
+    var tabs = document.querySelectorAll('.tab');
+    for(var j=0;j<tabs.length;j++){
+      tabs[j].classList.toggle('active', tabs[j].getAttribute('data-view') === name);
+    }
+    S.view = name;
+  }
+
+  function view(name){
+    if(name === 'home') renderHome();
+    if(name === 'manage') renderManage();
+    if(name === 'stats') renderStats();
+    showView(name);
+  }
+
+  function renderTop(){
+    var due = D.items.filter(function(i){ return i.srs.due <= Date.now(); }).length;
+    document.getElementById('due-count').textContent = due;
+  }
+
+  /* ================= 首页 ================= */
+  function renderHome(){
+    var el = document.getElementById('view-home');
+    var items = D.items;
+
+    if(!items.length){
+      el.innerHTML =
+        '<div class="empty">' +
+          '<div class="empty-icon">📦</div>' +
+          '<h2>还没有产品数据</h2>' +
+          '<p>先把要记的 20 多款产品价格录进来，之后就可以反复练习了。</p>' +
+          '<div class="row">' +
+            '<button class="btn primary" onclick="App.openBulk()">批量粘贴导入（最快）</button>' +
+            '<button class="btn" onclick="App.openEditor()">逐条添加</button>' +
+            '<button class="btn ghost" onclick="App.loadSample()">先看看示例</button>' +
+          '</div>' +
+        '</div>';
+      return;
+    }
+
+    var now = Date.now();
+    var due = items.filter(function(i){ return i.srs.due <= now; }).length;
+    var todayLog = D.log.filter(function(l){ return l.t >= todayStart(); });
+    var todayTotal = todayLog.length;
+    var todayAcc = todayTotal
+      ? Math.round(todayLog.filter(function(l){ return l.correct; }).length / todayTotal * 100)
+      : 0;
+    var weak = items.filter(function(i){ return i.stat.attempts >= 2 && errRate(i) > 0; })
+                    .sort(function(a,b){ return errRate(b) - errRate(a); })
+                    .slice(0,3);
+
+    el.innerHTML =
+      '<div class="hero">' +
+        '<div>' +
+          '<p class="eyebrow">今日复习</p>' +
+          '<div class="big-num">' + due + '</div>' +
+          '<p class="muted">个产品等待复习' + (due === 0 ? '，可以自由练习' : '，已按遗忘曲线排好序') + '</p>' +
+          '<div class="row">' +
+            '<button class="btn primary lg" onclick="App.start(\'due\')">开始复习</button>' +
+            '<button class="btn lg" onclick="App.start(\'timed\')">60 秒挑战</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="hero-stats">' +
+          '<div><span>' + items.length + '</span><small>产品总数</small></div>' +
+          '<div><span>' + todayTotal + '</span><small>今日练习</small></div>' +
+          '<div><span>' + todayAcc + '%</span><small>今日正确率</small></div>' +
+          '<div><span>' + due + '</span><small>待复习</small></div>' +
+        '</div>' +
+      '</div>' +
+
+      '<h3 class="sec-title">练习模式</h3>' +
+      '<div class="mode-grid">' +
+        Object.keys(MODES).map(function(k){
+          var m = MODES[k];
+          return '<button class="mode-card" onclick="App.start(\'' + k + '\')">' +
+                   '<b>' + m.name + '</b><span>' + m.desc + '</span>' +
+                 '</button>';
+        }).join('') +
+      '</div>' +
+
+      (weak.length
+        ? '<h3 class="sec-title">需要加强</h3><div class="weak-list">' +
+            weak.map(function(i){
+              return '<div class="weak-row"><span>' + esc(i.name) + '</span>' +
+                     '<span class="muted">错误率 ' + Math.round(errRate(i)*100) + '%</span></div>';
+            }).join('') +
+          '</div>'
+        : '');
+  }
+
+  /* ================= 练习 ================= */
+  function weakPool(){
+    var pool = D.items.filter(function(i){ return i.stat.wrong > 0 || i.srs.level === 0; });
+    if(!pool.length) pool = D.items.slice();
+    pool.sort(function(a,b){ return errRate(b) - errRate(a); });
+    return pool;
+  }
+
+  function start(mode){
+    if(!D.items.length){
+      toast('请先录入产品数据');
+      view('manage');
+      return;
+    }
+    if(mode === 'reverse' && uniqueNames().length < 2){
+      toast('反向模式至少需要 2 款产品');
+      return;
+    }
+
+    var pool;
+    if(mode === 'due'){
+      pool = D.items.filter(function(i){ return i.srs.due <= Date.now(); });
+      if(!pool.length){
+        pool = D.items.slice();
+        toast('今天没有待复习的，已切换为随机练习');
+      }
+    }else if(mode === 'weak'){
+      pool = weakPool();
+    }else{
+      pool = D.items.slice();
+    }
+    shuffle(pool);
+
+    var s = {
+      mode: mode,
+      queue: pool,
+      index: 0,
+      correct: 0,
+      wrong: 0,
+      startedAt: Date.now(),
+      answered: false,
+      advancing: false,
+      finished: false,
+      current: null,
+      deadline: 0,
+      timerId: null
+    };
+    S.session = s;
+
+    if(mode === 'timed'){
+      s.deadline = Date.now() + 60000;
+      s.timerId = setInterval(tickTimer, 100);
+    }
+
+    showView('practice');
+    nextQuestion();
+  }
+
+  function uniqueNames(){
+    var seen = {}, out = [];
+    D.items.forEach(function(i){ if(!seen[i.name]){ seen[i.name] = 1; out.push(i.name); } });
+    return out;
+  }
+
+  function tickTimer(){
+    var s = S.session;
+    if(!s || s.finished) return;
+    var left = Math.max(0, s.deadline - Date.now());
+    var el = document.getElementById('timer');
+    if(el) el.textContent = Math.ceil(left / 1000) + 's';
+    if(left <= 0) finishSession();
+  }
+
+  function nextQuestion(){
+    var s = S.session;
+    if(!s) return;
+    if(s.index >= s.queue.length){
+      finishSession();
+      return;
+    }
+    s.advancing = false;
+    s.answered = false;
+    var item = s.queue[s.index];
+    var cur = { item: item, answered: false, revealed: false };
+    s.current = cur;
+
+    if(s.mode === 'choice' || s.mode === 'timed' || s.mode === 'weak' || s.mode === 'due'){
+      cur.options = makePriceOptions(item.price, D.items.map(function(i){ return i.price; }));
+    }else if(s.mode === 'reverse'){
+      cur.options = makeNameOptions(item);
+    }else if(s.mode === 'flash'){
+      cur.revealed = false;
+    }
+
+    renderPractice();
+  }
+
+  function makePriceOptions(correct, allPrices){
+    var set = [correct];
+    function has(v){ return set.some(function(x){ return priceEqual(x, v); }); }
+
+    var pool = allPrices.slice();
+    shuffle(pool);
+    for(var i=0;i<pool.length && set.length<4;i++){
+      if(!has(pool[i])) set.push(pool[i]);
+    }
+    var factors = [0.8, 0.9, 1.1, 1.2, 0.65, 1.35, 0.75, 1.25];
+    var guard = 0;
+    while(set.length < 4 && guard++ < 80){
+      var f = factors[Math.floor(Math.random()*factors.length)];
+      var v = Math.round(correct * f * 100) / 100;
+      if(v > 0 && !has(v)) set.push(v);
+    }
+    return shuffle(set);
+  }
+
+  function makeNameOptions(item){
+    var names = uniqueNames().filter(function(n){ return n !== item.name; });
+    shuffle(names);
+    var opts = [item.name].concat(names.slice(0, 3));
+    return shuffle(opts);
+  }
+
+  function renderPractice(){
+    var el = document.getElementById('view-practice');
+    var s = S.session;
+    if(!s){ el.innerHTML = ''; return; }
+
+    if(s.finished){ el.innerHTML = summaryHTML(s); return; }
+
+    var cur = s.current;
+    if(!cur){ el.innerHTML = ''; return; }
+
+    var item = cur.item;
+    var body = '';
+
+    if(s.mode === 'flash'){
+      body =
+        '<div class="q-label">这款产品的价格是？</div>' +
+        '<div class="q-name">' + esc(item.name) + '</div>' +
+        (item.spec ? '<div class="muted">规格：' + esc(item.spec) + '</div>' : '') +
+        (cur.revealed
+          ? '<div class="reveal-price">¥' + fmtPrice(item.price) +
+              '<span class="unit">元' + (item.spec ? '/' + esc(item.spec) : '') + '</span></div>' +
+            '<div class="self-rate">' +
+              '<button class="btn red lg" onclick="App.flashRate(0)">忘了</button>' +
+              '<button class="btn amber lg" onclick="App.flashRate(1)">模糊</button>' +
+              '<button class="btn green lg" onclick="App.flashRate(2)">记得</button>' +
+            '</div>'
+          : '<button class="btn primary lg" onclick="App.revealFlash()">显示价格（空格）</button>');
+
+    }else if(s.mode === 'input'){
+      body =
+        '<div class="q-label">凭记忆写出价格</div>' +
+        '<div class="q-name">' + esc(item.name) + '</div>' +
+        (item.spec ? '<div class="muted">' + esc(item.spec) + '</div>' : '') +
+        '<div class="input-row">' +
+          '<span class="yen">¥</span>' +
+          '<input id="answer-input" class="answer-input" type="text" inputmode="decimal" ' +
+            'placeholder="输入价格" ' + (cur.answered ? 'disabled' : '') +
+            ' value="' + (cur.answered ? esc(cur.givenRaw || '') : '') + '" ' +
+            'onkeydown="App.inputKey(event)">' +
+        '</div>' +
+        (cur.answered
+          ? feedbackHTML(cur) + '<button class="btn primary" onclick="App.next()">下一题（回车）</button>'
+          : '<button class="btn primary" onclick="App.inputSubmit()">提交（回车）</button>');
+
+    }else if(s.mode === 'reverse'){
+      body =
+        '<div class="q-label">这个价格是哪款产品？</div>' +
+        '<div class="q-name">¥' + fmtPrice(item.price) + '</div>' +
+        '<div class="options">' +
+          cur.options.map(function(name, idx){
+            var cls = '';
+            if(cur.answered){
+              if(name === item.name) cls = 'correct';
+              else if(name === cur.given) cls = 'wrong';
+              else cls = 'dim';
+            }
+            return '<button class="opt ' + cls + '" ' + (cur.answered ? 'disabled' : '') +
+                   ' onclick="App.answerIndex(' + idx + ')">' + esc(name) + '</button>';
+          }).join('') +
+        '</div>' +
+        (cur.answered ? feedbackHTML(cur) : '');
+
+    }else{
+      body =
+        '<div class="q-label">这款产品的价格是？</div>' +
+        '<div class="q-name">' + esc(item.name) + '</div>' +
+        (item.spec ? '<div class="muted">' + esc(item.spec) + '</div>' : '') +
+        '<div class="options">' +
+          cur.options.map(function(p, idx){
+            var cls = '';
+            if(cur.answered){
+              if(priceEqual(p, item.price)) cls = 'correct';
+              else if(priceEqual(p, cur.given)) cls = 'wrong';
+              else cls = 'dim';
+            }
+            return '<button class="opt ' + cls + '" ' + (cur.answered ? 'disabled' : '') +
+                   ' onclick="App.answerIndex(' + idx + ')">¥' + fmtPrice(p) + '</button>';
+          }).join('') +
+        '</div>' +
+        (cur.answered ? feedbackHTML(cur) : '');
+    }
+
+    var timer = (s.mode === 'timed')
+      ? '<span class="timer" id="timer">' + Math.ceil(Math.max(0, s.deadline - Date.now())/1000) + 's</span>'
+      : '';
+
+    el.innerHTML =
+      '<div class="practice-top">' +
+        '<button class="btn ghost sm" onclick="App.quit()">← 退出</button>' +
+        '<span class="mode-name">' + MODES[s.mode].name + '</span>' +
+        timer +
+        '<span class="progress">' + (s.index + 1) + ' / ' + s.queue.length + '</span>' +
+      '</div>' +
+      '<div class="q-card">' + body + '</div>' +
+      '<div class="session-score">✓ ' + s.correct + ' &nbsp;·&nbsp; ✗ ' + s.wrong + '</div>';
+
+    if(s.mode === 'input' && cur.answered){
+      var inp = document.getElementById('answer-input');
+      if(inp) inp.focus();
+    }
+  }
+
+  function feedbackHTML(cur){
+    return cur.result
+      ? '<div class="feedback ok">✓ 正确</div>'
+      : '<div class="feedback bad">✗ 正确答案：¥' + fmtPrice(cur.item.price) + '</div>';
+  }
+
+  function revealFlash(){
+    var s = S.session;
+    if(!s || !s.current || s.answered || s.mode !== 'flash') return;
+    s.current.revealed = true;
+    renderPractice();
+  }
+
+  function answerIndex(idx){
+    var s = S.session;
+    if(!s || !s.current || s.answered) return;
+    var val = s.current.options[idx];
+    var item = s.current.item;
+    var correct = (s.mode === 'reverse')
+      ? (val === item.name)
+      : priceEqual(val, item.price);
+
+    s.answered = true;
+    s.current.answered = true;
+    s.current.result = correct;
+    s.current.given = val;
+
+    applyResult(item, correct, undefined);
+    if(correct) s.correct++; else s.wrong++;
+    renderPractice();
+
+    var delay = (s.mode === 'timed') ? (correct ? 380 : 850) : (correct ? 700 : 1400);
+    setTimeout(function(){
+      if(S.session === s && !s.finished) next();
+    }, delay);
+  }
+
+  function inputKey(e){
+    if(e.key !== 'Enter') return;
+    e.preventDefault();
+    var s = S.session;
+    if(s && s.answered) next();
+    else inputSubmit();
+  }
+
+  function inputSubmit(){
+    var s = S.session;
+    if(!s || !s.current || s.answered) return;
+    var el = document.getElementById('answer-input');
+    if(!el) return;
+    var raw = el.value.trim();
+    var val = parsePrice(raw);
+    if(raw === '' || !isFinite(val)){
+      toast('请输入价格数字');
+      el.focus();
+      return;
+    }
+
+    var item = s.current.item;
+    var correct = priceEqual(val, item.price);
+
+    s.answered = true;
+    s.current.answered = true;
+    s.current.result = correct;
+    s.current.given = val;
+    s.current.givenRaw = raw;
+
+    applyResult(item, correct, undefined);
+    if(correct) s.correct++; else s.wrong++;
+    renderPractice();
+  }
+
+  function flashRate(q){
+    var s = S.session;
+    if(!s || !s.current || s.answered) return;
+    var item = s.current.item;
+
+    s.answered = true;
+    s.current.answered = true;
+    s.current.result = (q === 2);
+    s.current.given = item.price;
+
+    if(q === 2) s.correct++;
+    else if(q === 0) s.wrong++;
+
+    applyResult(item, q === 2, q);
+    renderPractice();
+
+    setTimeout(function(){
+      if(S.session === s && !s.finished) next();
+    }, 500);
+  }
+
+  function next(){
+    var s = S.session;
+    if(!s || s.finished || s.advancing) return;
+    s.advancing = true;
+    s.index++;
+    if(s.index >= s.queue.length){
+      finishSession();
+      return;
+    }
+    nextQuestion();
+  }
+
+  function finishSession(){
+    var s = S.session;
+    if(!s) return;
+    s.finished = true;
+    if(s.timerId){ clearInterval(s.timerId); s.timerId = null; }
+    renderPractice();
+    renderTop();
+  }
+
+  function quit(){
+    var s = S.session;
+    if(s && s.timerId) clearInterval(s.timerId);
+    S.session = null;
+    renderTop();
+    view('home');
+  }
+
+  function restart(){
+    var mode = S.session ? S.session.mode : 'choice';
+    S.session = null;
+    start(mode);
+  }
+
+  function summaryHTML(s){
+    var total = s.correct + s.wrong;
+    var acc = total ? Math.round(s.correct / total * 100) : 0;
+    var seconds = Math.max(1, Math.round((Date.now() - s.startedAt) / 1000));
+    var icon = acc >= 85 ? '🎉' : acc >= 60 ? '💪' : '📚';
+    return '<div class="summary">' +
+      '<div class="summary-icon">' + icon + '</div>' +
+      '<h2>本轮完成</h2>' +
+      '<div class="summary-grid">' +
+        '<div><span>' + total + '</span><small>答题数</small></div>' +
+        '<div><span>' + s.correct + '</span><small>答对</small></div>' +
+        '<div><span>' + acc + '%</span><small>正确率</small></div>' +
+        '<div><span>' + seconds + 's</span><small>用时</small></div>' +
+      '</div>' +
+      '<div class="row center">' +
+        '<button class="btn primary" onclick="App.restart()">再练一轮</button>' +
+        '<button class="btn" onclick="App.start(\'weak\')">强化错题</button>' +
+        '<button class="btn ghost" onclick="App.quit()">返回首页</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ================= 管理 ================= */
+  function renderManage(){
+    var el = document.getElementById('view-manage');
+    el.innerHTML =
+      '<div class="toolbar">' +
+        '<button class="btn primary" onclick="App.openEditor()">＋ 添加产品</button>' +
+        '<button class="btn" onclick="App.openBulk()">批量导入</button>' +
+        '<button class="btn" onclick="App.exportData()">导出备份</button>' +
+        '<label class="btn">导入备份<input type="file" accept=".json,application/json" onchange="App.importFile(event)" hidden></label>' +
+        '<button class="btn ghost" onclick="App.loadSample()">载入示例</button>' +
+        '<button class="btn danger" onclick="App.clearAll()">清空</button>' +
+      '</div>' +
+      '<div class="search-row">' +
+        '<input class="input" id="search" placeholder="搜索产品名称或类别…" value="' + esc(S.filter) + '" oninput="App.setFilter(this.value)">' +
+        '<span class="muted" id="count-label"></span>' +
+      '</div>' +
+      '<div id="product-table"></div>';
+    renderTable();
+  }
+
+  function renderTable(){
+    var box = document.getElementById('product-table');
+    if(!box) return;
+    var q = S.filter.trim().toLowerCase();
+    var list = D.items.filter(function(i){
+      if(!q) return true;
+      return i.name.toLowerCase().indexOf(q) >= 0 ||
+             (i.category || '').toLowerCase().indexOf(q) >= 0;
+    });
+
+    var label = document.getElementById('count-label');
+    if(label) label.textContent = '共 ' + list.length + ' 款';
+
+    if(!list.length){
+      box.innerHTML = '<div class="empty small"><p>没有匹配的产品</p></div>';
+      return;
+    }
+
+    box.innerHTML =
+      '<div class="table-wrap"><table>' +
+        '<thead><tr><th>产品</th><th>价格</th><th>掌握度</th><th>下次复习</th><th></th></tr></thead>' +
+        '<tbody>' +
+          list.map(function(i){
+            var acc = i.stat.attempts ? Math.round(i.stat.correct / i.stat.attempts * 100) : 0;
+            var dueTxt = i.srs.due <= Date.now() ? '现在' : fmtDate(i.srs.due);
+            return '<tr>' +
+              '<td><b>' + esc(i.name) + '</b>' +
+                (i.category ? '<div class="sub">' + esc(i.category) + '</div>' : '') +
+                (i.note ? '<div class="sub">' + esc(i.note) + '</div>' : '') +
+              '</td>' +
+              '<td class="price-cell">¥' + fmtPrice(i.price) +
+                (i.spec ? '<span class="sub">/' + esc(i.spec) + '</span>' : '') +
+              '</td>' +
+              '<td>' +
+                '<div class="bar"><span style="width:' + acc + '%"></span></div>' +
+                '<span class="sub">' + (i.stat.attempts ? acc + '% · 练 ' + i.stat.attempts + ' 次' : '未练习') + '</span>' +
+              '</td>' +
+              '<td class="sub">' + dueTxt + '</td>' +
+              '<td class="ops">' +
+                '<button class="mini" onclick="App.openEditor(\'' + i.id + '\')">编辑</button>' +
+                '<button class="mini danger" onclick="App.removeItem(\'' + i.id + '\')">删除</button>' +
+              '</td>' +
+            '</tr>';
+          }).join('') +
+        '</tbody>' +
+      '</table></div>';
+  }
+
+  function setFilter(v){
+    S.filter = v;
+    renderTable();
+  }
+
+  function openEditor(id){
+    var it = id ? D.items.filter(function(i){ return i.id === id; })[0] : null;
+    showModal({
+      title: it ? '编辑产品' : '添加产品',
+      body:
+        '<div class="form">' +
+          '<label>产品名称<input id="f-name" class="input" value="' + (it ? esc(it.name) : '') + '" placeholder="例如：500ml 矿泉水"></label>' +
+          '<label>价格（元）<input id="f-price" class="input" type="number" step="0.01" min="0" value="' + (it ? it.price : '') + '" placeholder="例如：3.5"></label>' +
+          '<label>规格单位（选填）<input id="f-spec" class="input" value="' + (it ? esc(it.spec) : '') + '" placeholder="例如：瓶 / 杯 / 箱"></label>' +
+          '<label>类别（选填）<input id="f-category" class="input" value="' + (it ? esc(it.category) : '') + '" placeholder="例如：饮料"></label>' +
+          '<label>备注（选填）<input id="f-note" class="input" value="' + (it ? esc(it.note) : '') + '" placeholder="例如：批发价"></label>' +
+        '</div>',
+      actions: [
+        { label: '取消', cls: 'ghost', onClick: closeModal },
+        { label: '保存', cls: 'primary', onClick: function(){ saveEditor(id); } }
+      ]
+    });
+  }
+
+  function saveEditor(id){
+    var nameEl = document.getElementById('f-name');
+    var priceEl = document.getElementById('f-price');
+    var name = nameEl.value.trim();
+    var priceRaw = priceEl.value.trim();
+    var price = Number(priceRaw);
+
+    if(!name){ toast('请填写产品名称'); nameEl.focus(); return; }
+    if(priceRaw === '' || !isFinite(price) || price < 0){
+      toast('请填写正确的价格');
+      priceEl.focus();
+      return;
+    }
+
+    var dup = D.items.filter(function(i){ return i.name === name && i.id !== id; })[0];
+    if(dup){ toast('已有同名产品，请换个名称'); nameEl.focus(); return; }
+
+    var data = {
+      name: name,
+      price: price,
+      spec: document.getElementById('f-spec').value.trim(),
+      category: document.getElementById('f-category').value.trim(),
+      note: document.getElementById('f-note').value.trim()
+    };
+
+    if(id){
+      var it = D.items.filter(function(i){ return i.id === id; })[0];
+      if(it){
+        it.name = data.name;
+        it.price = data.price;
+        it.spec = data.spec;
+        it.category = data.category;
+        it.note = data.note;
+      }
+    }else{
+      data.id = uid();
+      D.items.push(normalizeItem(data));
+    }
+
+    save();
+    closeModal();
+    renderTable();
+    renderHome();
+    renderTop();
+    toast('已保存');
+  }
+
+  function removeItem(id){
+    var it = D.items.filter(function(i){ return i.id === id; })[0];
+    if(!it) return;
+    if(!confirm('确定删除「' + it.name + '」吗？')) return;
+    D.items = D.items.filter(function(i){ return i.id !== id; });
+    D.log = D.log.filter(function(l){ return l.id !== id; });
+    save();
+    renderTable();
+    renderHome();
+    renderTop();
+    toast('已删除');
+  }
+
+  function openBulk(){
+    showModal({
+      title: '批量导入产品',
+      body:
+        '<p class="muted">每行一款产品，下面这些写法都能识别：</p>' +
+        '<pre class="code">矿泉水,2\n可乐,3.5,饮料\n拿铁 25\n美式咖啡：18,咖啡,热饮</pre>' +
+        '<p class="muted">格式：名称,价格[,类别][,备注]；也支持「名称 价格」。同名产品会更新价格，不会重复添加。</p>' +
+        '<textarea id="bulk-text" class="input textarea" rows="9" placeholder="例如：\n矿泉水,2\n可乐,3.5,饮料\n拿铁 25"></textarea>',
+      actions: [
+        { label: '取消', cls: 'ghost', onClick: closeModal },
+        { label: '解析并导入', cls: 'primary', onClick: doBulk }
+      ]
+    });
+  }
+
+  function parseBulk(text){
+    var out = [];
+    var lines = String(text).split(/\r?\n/);
+    for(var i=0;i<lines.length;i++){
+      var line = lines[i].trim();
+      if(!line || line.charAt(0) === '#') continue;
+
+      var name = '', price = NaN, category = '', note = '';
+      var parts = line.split(/[,，\t]+/).map(function(s){ return s.trim(); })
+                       .filter(function(s){ return s !== ''; });
+
+      if(parts.length >= 2 && /^[¥￥]?\s*\d+(?:\.\d+)?\s*元?$/.test(parts[1])){
+        name = parts[0];
+        price = parsePrice(parts[1]);
+        category = parts[2] || '';
+        note = parts[3] || '';
+      }else{
+        var m = line.match(/^(.+?)[\s:：=＝]+[¥￥]?(\d+(?:\.\d+)?)\s*元?\s*$/);
+        if(!m) continue;
+        name = m[1].trim();
+        price = Number(m[2]);
+      }
+
+      if(name && isFinite(price) && price >= 0){
+        out.push({ name: name, price: price, category: category, note: note });
+      }
+    }
+    return out;
+  }
+
+  function doBulk(){
+    var textEl = document.getElementById('bulk-text');
+    var rows = parseBulk(textEl.value);
+    if(!rows.length){
+      toast('没有识别到有效行，请检查格式');
+      return;
+    }
+
+    var added = 0, updated = 0;
+    rows.forEach(function(r){
+      var exist = D.items.filter(function(i){ return i.name === r.name; })[0];
+      if(exist){
+        exist.price = r.price;
+        if(r.category) exist.category = r.category;
+        if(r.note) exist.note = r.note;
+        updated++;
+      }else{
+        D.items.push(normalizeItem({
+          id: uid(), name: r.name, price: r.price,
+          category: r.category, note: r.note
+        }));
+        added++;
+      }
+    });
+
+    save();
+    closeModal();
+    renderTable();
+    renderHome();
+    renderTop();
+    toast('导入完成：新增 ' + added + ' 款，更新 ' + updated + ' 款');
+  }
+
+  function exportData(){
+    var blob = new Blob([JSON.stringify(D, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var d = new Date();
+    function pad(n){ return n < 10 ? '0' + n : '' + n; }
+    a.href = url;
+    a.download = '价格记忆备份-' + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    toast('已导出备份文件');
+  }
+
+  function importFile(ev){
+    var file = ev.target.files && ev.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var d = JSON.parse(reader.result);
+        if(!d || !Array.isArray(d.items)) throw new Error('文件格式不正确');
+        if(!confirm('导入备份会覆盖当前全部产品数据，确定继续吗？')) return;
+
+        var seen = {};
+        var items = d.items.map(function(it){
+          var n = normalizeItem(it);
+          if(seen[n.id]) n.id = uid();
+          seen[n.id] = 1;
+          return n;
+        });
+        D = {
+          items: items,
+          log: Array.isArray(d.log) ? d.log.slice(-800) : []
+        };
+        save();
+        renderTable();
+        renderHome();
+        renderStats();
+        renderTop();
+        toast('备份已导入，共 ' + items.length + ' 款产品');
+      }catch(e){
+        toast('导入失败：' + e.message);
+      }
+    };
+    reader.readAsText(file);
+    ev.target.value = '';
+  }
+
+  function loadSample(){
+    if(D.items.length && !confirm('示例数据会追加到现有产品中，确定吗？')) return;
+    var sample = [
+      { name: '示例产品 A', price: 19.9, category: '示例' },
+      { name: '示例产品 B', price: 45, category: '示例' },
+      { name: '示例产品 C', price: 128, category: '示例' },
+      { name: '示例产品 D', price: 8.5, category: '示例' }
+    ];
+    var added = 0;
+    sample.forEach(function(r){
+      if(D.items.some(function(i){ return i.name === r.name; })) return;
+      D.items.push(normalizeItem({ id: uid(), name: r.name, price: r.price, category: r.category }));
+      added++;
+    });
+    save();
+    renderTable();
+    renderHome();
+    renderTop();
+    toast(added ? '已载入 ' + added + ' 款示例产品' : '示例产品已存在');
+  }
+
+  function clearAll(){
+    if(!D.items.length) { toast('当前没有数据'); return; }
+    if(!confirm('确定清空全部产品数据和练习记录吗？此操作不可恢复。')) return;
+    D = { items: [], log: [] };
+    save();
+    renderTable();
+    renderHome();
+    renderStats();
+    renderTop();
+    toast('已清空');
+  }
+
+  /* ================= 统计 ================= */
+  function renderStats(){
+    var el = document.getElementById('view-stats');
+    var items = D.items;
+
+    if(!items.length){
+      el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><h2>还没有统计数据</h2><p>录入产品并开始练习后，这里会显示掌握情况。</p></div>';
+      return;
+    }
+
+    var totalAttempts = items.reduce(function(s,i){ return s + i.stat.attempts; }, 0);
+    var totalCorrect = items.reduce(function(s,i){ return s + i.stat.correct; }, 0);
+    var acc = totalAttempts ? Math.round(totalCorrect / totalAttempts * 100) : 0;
+    var mastered = items.filter(function(i){ return i.srs.level >= 3; }).length;
+    var learning = items.filter(function(i){ return i.stat.attempts > 0 && i.srs.level < 3; }).length;
+    var untouched = items.filter(function(i){ return !i.stat.attempts; }).length;
+    var due = items.filter(function(i){ return i.srs.due <= Date.now(); }).length;
+
+    var days = [];
+    for(var d=6;d>=0;d--){
+      var start = todayStart() - d * DAY;
+      var end = start + DAY;
+      var logs = D.log.filter(function(l){ return l.t >= start && l.t < end; });
+      var dt = new Date(start);
+      days.push({
+        label: (dt.getMonth()+1) + '/' + dt.getDate(),
+        total: logs.length,
+        correct: logs.filter(function(l){ return l.correct; }).length
+      });
+    }
+    var maxDay = Math.max(1, days.reduce(function(m,x){ return Math.max(m, x.total); }, 0));
+
+    var weak = items.filter(function(i){ return i.stat.attempts >= 2 && errRate(i) > 0; })
+                    .sort(function(a,b){ return errRate(b) - errRate(a); })
+                    .slice(0, 8);
+
+    el.innerHTML =
+      '<div class="stat-cards">' +
+        '<div class="stat-card"><span>' + items.length + '</span><small>产品总数</small></div>' +
+        '<div class="stat-card"><span>' + totalAttempts + '</span><small>总练习次数</small></div>' +
+        '<div class="stat-card"><span>' + acc + '%</span><small>总正确率</small></div>' +
+        '<div class="stat-card"><span>' + due + '</span><small>待复习</small></div>' +
+        '<div class="stat-card"><span>' + mastered + '</span><small>已掌握</small></div>' +
+        '<div class="stat-card"><span>' + learning + '</span><small>学习中</small></div>' +
+        '<div class="stat-card"><span>' + untouched + '</span><small>未练习</small></div>' +
+      '</div>' +
+
+      '<h3 class="sec-title">最近 7 天练习量</h3>' +
+      '<div class="chart">' +
+        days.map(function(x){
+          var h = x.total ? Math.max(4, Math.round(x.total / maxDay * 100)) : 0;
+          return '<div class="bar-col">' +
+                   '<div class="bar-track"><div class="bar-fill" style="height:' + h + '%"></div></div>' +
+                   '<span>' + x.total + '</span><small>' + x.label + '</small>' +
+                 '</div>';
+        }).join('') +
+      '</div>' +
+
+      (weak.length
+        ? '<h3 class="sec-title">薄弱产品</h3><div class="weak-list">' +
+            weak.map(function(i){
+              return '<div class="weak-row"><span>' + esc(i.name) + '</span>' +
+                     '<span class="muted">错 ' + i.stat.wrong + ' 次 · 错误率 ' + Math.round(errRate(i)*100) + '%</span></div>';
+            }).join('') +
+          '</div>'
+        : '');
+  }
+
+  /* ================= 弹窗 ================= */
+  function showModal(opts){
+    document.getElementById('modal-title').textContent = opts.title || '';
+    document.getElementById('modal-body').innerHTML = opts.body || '';
+    var box = document.getElementById('modal-actions');
+    box.innerHTML = '';
+    (opts.actions || []).forEach(function(a){
+      var b = document.createElement('button');
+      b.className = 'btn ' + (a.cls || '');
+      b.textContent = a.label;
+      b.onclick = a.onClick;
+      box.appendChild(b);
+    });
+    document.getElementById('modal-root').hidden = false;
+    setTimeout(function(){
+      var f = document.querySelector('#modal-body input, #modal-body textarea');
+      if(f) f.focus();
+    }, 50);
+  }
+
+  function closeModal(){
+    document.getElementById('modal-root').hidden = true;
+  }
+
+  /* ================= 键盘 ================= */
+  document.addEventListener('keydown', function(e){
+    if(!document.getElementById('modal-root').hidden) return;
+
+    var s = S.session;
+    if(S.view !== 'practice' || !s || s.finished || !s.current) return;
+
+    var tag = (e.target && e.target.tagName) || '';
+    if(tag === 'INPUT' || tag === 'TEXTAREA'){
+      if(e.key === 'Enter' && s.answered) next();
+      return;
+    }
+
+    if(s.mode === 'flash'){
+      if(e.code === 'Space' && !s.current.revealed){
+        e.preventDefault();
+        revealFlash();
+      }else if(s.current.revealed && (e.key === '1' || e.key === '2' || e.key === '3')){
+        e.preventDefault();
+        flashRate(Number(e.key) - 1);
+      }
+    }else if(s.mode === 'input'){
+      if(e.key === 'Enter' && s.answered) next();
+    }else{
+      if(!s.answered && ['1','2','3','4'].indexOf(e.key) >= 0){
+        e.preventDefault();
+        answerIndex(Number(e.key) - 1);
+      }
+    }
+  });
+
+  /* ================= 初始化 ================= */
+  function init(){
+    ensureSeed();
+    renderTop();
+    renderHome();
+    showView('home');
+  }
+
+  window.App = {
+    view: view,
+    start: start,
+    quit: quit,
+    restart: restart,
+    next: next,
+    revealFlash: revealFlash,
+    answerIndex: answerIndex,
+    inputSubmit: inputSubmit,
+    inputKey: inputKey,
+    flashRate: flashRate,
+    openEditor: openEditor,
+    removeItem: removeItem,
+    openBulk: openBulk,
+    setFilter: setFilter,
+    exportData: exportData,
+    importFile: importFile,
+    loadSample: loadSample,
+    clearAll: clearAll,
+    closeModal: closeModal
+  };
+
+  init();
+})();
+</script>
+</body>
+</html>
